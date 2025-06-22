@@ -9,6 +9,8 @@ import re
 from gtts import gTTS
 
 from keep import keep_alive
+from discord import FFmpegPCMAudio
+
 
 user_money = {}
 
