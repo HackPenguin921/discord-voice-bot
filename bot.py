@@ -6,6 +6,7 @@ import os
 import json
 import math
 import re
+from gtts import gTTS
 
 from keep import keep_alive
 
@@ -36,7 +37,9 @@ intents = discord.Intents.default()
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 bot.remove_command('help')
+intents.voice_states = True  # VCの入退室を検知するために必須
 
+TEXT_CHANNEL_ID = 1386334847865458688
 
 # 現在のモード（ツン or でれ）
 mode = "でれ"
@@ -112,6 +115,40 @@ words = [
 async def on_ready():
     print(f"✅ 起動完了！{bot.user}としてログイン中だにぇ！")
 
+
+    is_playing = False
+
+async def play_tts(vc, text):
+    global is_playing
+    if is_playing:
+        return
+    is_playing = True
+
+    tts = gTTS(text=text, lang='ja')
+    tts.save("tts.mp3")
+
+    audio_source = FFmpegPCMAudio("tts.mp3")
+    vc.play(audio_source)
+
+    while vc.is_playing():
+        await asyncio.sleep(0.5)
+
+    is_playing = False
+    os.remove("tts.mp3")
+
+@bot.event
+async def on_voice_state_update(member, before, after):
+    # ユーザーがVCに入った時
+    if before.channel != after.channel and after.channel is not None:
+        vc = member.guild.voice_client
+        # BotがまだVCにいなければ入る
+        if vc is None:
+            try:
+                vc = await after.channel.connect()
+                print(f"Botが {after.channel} に接続しました")
+            except Exception as e:
+                print(f"VC接続エラー: {e}")
+
 # メッセージ受信時のイベント
 @bot.event
 async def on_message(message):
@@ -129,6 +166,16 @@ async def on_message(message):
         await message.channel.send(reply)
 
     await bot.process_commands(message)
+    
+    if message.channel.id == TEXT_CHANNEL_ID:
+        vc = message.guild.voice_client
+        if vc is None:
+            # 監視チャンネルからはどのVCに接続すればいいか分からないので
+            # 何もしない or メッセージ送信者がVCにいるなら接続などの工夫も可能
+            await message.channel.send("Botはどこにも接続していません。")
+            return
+
+        await play_tts(vc, message.content)
     
 
     # あいさつ反応
