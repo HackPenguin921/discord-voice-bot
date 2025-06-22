@@ -8,7 +8,6 @@ import math
 import re
 from gtts import gTTS
 
-from keep import keep_alive
 from discord import FFmpegPCMAudio
 
 
@@ -529,5 +528,4 @@ async def 助けて(ctx):
 
 # 最後にここでBot起動
 user_money = load_money_data()
-keep_alive()
 bot.run(os.environ['TOKEN'])
